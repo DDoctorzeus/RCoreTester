@@ -67,7 +67,7 @@ while [ $COUNT_SOCKETS -lt $NUMSOCKETS ]; do
         echo "Testing socket $COUNT_SOCKETS, core $COUNT";
 
         #Start detatched stresstest pinned to specific core/thread
-        taskset $(($COUNT+1)) stress -c 1 -t 10 >/dev/null &
+        taskset -c $COUNT stress -c 1 -t $TESTTIMEPERCORE_SEC >/dev/null &
 
         #Monitor stress test and check core while still alive
         while [ "$(ps -A | grep stress)" != "" ]; do
