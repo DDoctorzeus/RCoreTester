@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #STATICVALS
-REQBINARIES=('lscpu' 'grep' 'sed' 'taskset' 'stress');
+REQBINS=('lscpu' 'grep' 'sed' 'taskset' 'stress' 'bc');
 SPACERSTR="\n------------------------------\n";
-TESTTIMEPERCORE_SEC=60;
+TESTTIMEPERCORE_SEC=5;
 
 #Vals
 CPUDETAILS=();
@@ -20,8 +20,22 @@ STARTPOS=0;
 ENDPOS=1;
 COUNT_SOCKETS=0;
 COUNT=0;
+CORES_FREQS=();
+CORE_FREQS=();
+CORE_CURRENTFREQ=0;
+CORE_MAXFREQ=0;
+CORE_AVERAGEFREQ=0;
+FINAL_RESULTSPOS=();
+FINAL_AVERAGEFREQS=();
+FINAL_HIGHESTFREQS=();
 
-
+#Check all required binaries are present
+for bin in "${REQBINS[@]}"; do
+	if ! hash $bin 2>/dev/null; then
+		echo "Missing required executable $bin! Please ensure the application is installed before running this script.";
+		exit 1;
+	fi
+done
 
 #Get Number of Actual Cores and sockets as well as work out a time estimate for the script to complete
 CPUDETAILS=($(lscpu | grep -E 'Thread|socket|Socket' | sed 's/^.* //g'));
@@ -58,7 +72,7 @@ COUNT_SOCKETS=0;
 while [ $COUNT_SOCKETS -lt $NUMSOCKETS ]; do
 
     #Work out start pos and end pos to test
-    STARTPOS=$(( $COUNT_SOCKETS*($THREADSPERCORE) ));
+    STARTPOS=$(( $COUNT_SOCKETS*$THREADSPERCORE ));
     ENDPOS=$(( $STARTPOS+$CORESPERSOCKET ));
 
     #Loop Through this sockets cores
@@ -66,15 +80,41 @@ while [ $COUNT_SOCKETS -lt $NUMSOCKETS ]; do
     while [ $COUNT -lt $ENDPOS ]; do
         echo "Testing socket $COUNT_SOCKETS, core $COUNT";
 
+        #Reset corefreq array and maxFreq
+        unset CORE_FREQS;
+        CORE_FREQS=();
+        CORE_MAXFREQ="0";
+
         #Start detatched stresstest pinned to specific core/thread
         taskset -c $COUNT stress -c 1 -t $TESTTIMEPERCORE_SEC >/dev/null &
 
         #Monitor stress test and check core while still alive
         while [ "$(ps -A | grep stress)" != "" ]; do
 
+            #Get core freqs
+            CORES_FREQS=($(cat /proc/cpuinfo | grep MHz | sed 's/^.*: //g'));
+
+            #Get current core frequency
+            CORE_CURRENTFREQ=${CORES_FREQS[$COUNT]};
+            CORE_FREQS+=($CORE_CURRENTFREQ);
+
+            #Check largest
+            if (( $(echo "$CORE_CURRENTFREQ > $CORE_MAXFREQ" | bc -l) )); then
+                CORE_MAXFREQ="$CORE_CURRENTFREQ";
+            fi
+
             #Sleep 1 second
             sleep 1;
         done
+
+        #Calculate average core frequency
+        CORE_AVERAGEFREQ=$(echo "${CORE_FREQS[@]}" | sed 's/ /+/g' | bc);
+        CORE_AVERAGEFREQ=$(echo "$CORE_AVERAGEFREQ/${#CORE_FREQS[@]}" | bc);
+
+        #Add to results array
+        FINAL_RESULTSPOS+=("$COUNT_SOCKETS:$COUNT");
+        FINAL_AVERAGEFREQS+=($CORE_AVERAGEFREQ);
+        FINAL_HIGHESTFREQS+=($CORE_MAXFREQ);
 
         COUNT=$(( $COUNT+1 ));
     done
@@ -82,4 +122,13 @@ while [ $COUNT_SOCKETS -lt $NUMSOCKETS ]; do
     COUNT_SOCKETS=$(( $COUNT_SOCKETS+1 ));
 done
 
-#cat /proc/cpuinfo | grep MHz | sed 's/^.*: //g'
+#Present Results
+echo -e "\nFinal Results (Socket:Core): ";
+COUNT=0;
+ENDPOS="${#FINAL_AVERAGEFREQS[@]}";
+while [ $COUNT -lt $ENDPOS ]; do
+
+    echo "${FINAL_RESULTSPOS[$COUNT]} - High of ${FINAL_HIGHESTFREQS[$COUNT]} Mhz, ${FINAL_AVERAGEFREQS[$COUNT]} Mhz average";
+
+    COUNT=$(( $COUNT+1 ));
+done
