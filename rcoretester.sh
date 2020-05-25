@@ -112,14 +112,14 @@ COUNT_SOCKETS=0;
 while [ $COUNT_SOCKETS -lt $NUMSOCKETS ]; do
 
     #Work out start pos and end pos to test
-    STARTPOS=$(( $COUNT_SOCKETS*$THREADSPERCORE ));
-    ENDPOS=$(( $STARTPOS+$CORESPERSOCKET ));
+    STARTPOS=$(( COUNT_SOCKETS*CORESPERSOCKET*THREADSPERCORE ));
+    ENDPOS=$(( STARTPOS+CORESPERSOCKET ));
 
     #Loop Through this sockets cores
     COUNT=$STARTPOS;
     while [ $COUNT -lt $ENDPOS ]; do
         if [ "$SILENTMODE" -ne 1 ]; then
-            echo "Testing socket $COUNT_SOCKETS, core $COUNT";
+            echo "Testing socket $COUNT_SOCKETS, core $((COUNT-STARTPOS))";
         fi
 
         #Reset corefreq array and maxFreq
@@ -171,6 +171,7 @@ while [ $COUNT_SOCKETS -lt $NUMSOCKETS ]; do
 done
 
 #Bubble Sort (very inefficent so may change later)
+ENDPOS=${#FINAL_AVERAGEFREQS[@]};
 ENDPOS=$((ENDPOS-1));
 for ((i=0; i<ENDPOS; i++)); do
     for ((j=0; j<ENDPOS; j++)); do
