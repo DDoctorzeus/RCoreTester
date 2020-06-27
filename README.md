@@ -9,7 +9,7 @@ Any distribution must include this readme file.
 
 This script requires the following binaries: 'lscpu' 'grep' 'sed' 'taskset' 'stress' 'bc'.
 
-I created this script in my spare time for my own personal use to help identify which cores on my Ry**n CPU have the best silicon quality and were able to boost the highest. This is useful for identifying the best performing cores for performance tuning with CPU Optomization Software (in my case my own Software RThreader (https://github.com/TechtonicSoftware/RThreader)). While I have tried to accommodate for systems with multiple CPU sockets I havn't tested it extensively on them.
+I created this script in my spare time for my own personal use to help identify which cores on my Ry**n CPU have the best silicon quality and were able to boost the highest. This is useful for identifying the best performing cores for performance tuning with CPU Optomization Software. While I have tried to accommodate for systems with multiple CPU sockets I havn't tested it extensively on them.
 
 Please note this is a script that performs stress tests on your system using the 'stress' binary. While this is normally completely safe - by using it you do however agree to indemnify me and Techtonic Software of any and all damage that might be caused by its use to your system or otherwise (e.g. overheating CPU, etc).
 
